@@ -1,0 +1,29 @@
+[project]
+name = "prints-ng"
+version = "0.1.0"
+description = "build123d models and scripts to build them, on rails"
+authors = [{ name = "Nat Wittstock", email = "nat@fardog.io" }]
+readme = "README.md"
+license = "CC-BY-NC-4.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "build123d~=0.9.1",
+]
+
+[dependency-groups]
+dev = [
+    "ocp-vscode~=2.9.0",
+    "ruff~=0.13.0",
+]
+
+[project.scripts]
+prints = "prints:cli.main"
+
+[build-system]
+requires = ["uv_build~=0.8.17"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "prints"
+module-root = ""
