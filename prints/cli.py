@@ -102,6 +102,7 @@ def main():
         kwargs = {
             "dest": k,
             "type": v,
+            "default": getattr(mod.Params, k),
         }
         if v is bool:
             del kwargs["type"]
