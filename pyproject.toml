@@ -14,6 +14,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ocp-vscode~=2.9.0",
+    "pytest~=8.4.2",
     "ruff~=0.13.0",
 ]
 

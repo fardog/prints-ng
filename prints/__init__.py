@@ -31,7 +31,7 @@ class ParamsBase(object, metaclass=ParamsMeta):
             yield getattr(self, attr)
 
 
-def getargspec(
+def _getargspec(
     params: Mapping[str, Parameter],
 ) -> tuple[list[str], list[str], list[str]]:
     args, kwargs, has_default = [], [], []
@@ -60,7 +60,7 @@ def check_module(mod) -> None:
         raise TypeError("module's `Params` export must subclass `prints.ParamsBase`")
 
     sig = signature(mod.main).parameters
-    args, kwargs, has_default = getargspec(sig)
+    args, kwargs, has_default = _getargspec(sig)
     if not args:
         raise TypeError("module must accept at least one parameter")
     params = args.pop(0)
