@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from dataclasses import dataclass
 from inspect import Parameter, signature
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 from build123d import Part
 
@@ -10,6 +10,7 @@ from build123d import Part
 class Result:
     part: Part
     locals: Any
+    name: str | None = None
 
 
 class ParamsMeta(type):
@@ -79,3 +80,10 @@ def check_module(mod) -> None:
         raise TypeError(
             f"module may not contain kwargs without defaults; found {', '.join(kwargs_without_default)}"
         )
+
+
+@dataclass(frozen=True)
+class ThreadedInsert(ParamsBase):
+    diameter: float
+    depth: float
+    wall: float

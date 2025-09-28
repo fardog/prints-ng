@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from collections.abc import Iterable
 import datetime
 import os
 import sys
@@ -34,29 +35,50 @@ def export(
     if os.path.exists(outfile) and not args.force:
         raise FileExistsError(f"{outfile} exists; use --force to overwrite")
 
-    res = mod.main(params)
-    if not isinstance(res, Result):
-        raise ValueError("invalid generation: not instance of ``Result``")
-
-    _, ext = os.path.splitext(outfile)
+    fname, ext = os.path.splitext(outfile)
+    export_fn = None
     if ext == ".step":
-        export_step(res.part, outfile)
+        export_fn = export_step
     elif ext == ".stl":
-        export_stl(res.part, outfile)
+        export_fn = export_stl
     else:
         raise ValueError(f"unsupported extension: {ext}")
 
-    print(f"[{datetime.datetime.now()}] generated: {outfile}")
+    res = mod.main(params)
+    if not res:
+        raise ValueError("invalid generation: received empty list of results")
+    elif isinstance(res, (list, tuple)):
+        for idx, r in enumerate(res):
+            if not isinstance(r, Result):
+                raise ValueError("invalid generation: was not instance of ``Result``")
+            name = r.name if r.name else str(idx)
+            part_outfile = f"{fname}-{name}{ext}"
+            export_fn(r.part, part_outfile)
+            print(f"[{datetime.datetime.now()}] generated: {part_outfile}")
+    elif isinstance(res, Result):
+        part_outfile = f"{fname}{ext}"
+        export_fn(res.part, part_outfile)
+        print(f"[{datetime.datetime.now()}] generated: {part_outfile}")
+    else:
+        raise ValueError(
+            f"invalid generation: received unexpected type {type(res)} from module"
+        )
 
 
 def view(mod_name: str, mod: ModuleType, *, args: Namespace, params: Namespace) -> None:
     from ocp_vscode import show
 
     res = mod.main(params)
-    if not isinstance(res, Result):
+    if not isinstance(res, (list, tuple)):
+        res = [res]
+
+    if not all([isinstance(r, Result) for r in res]):
         raise ValueError("invalid generation: not instance of ``Result``")
 
-    show(res.locals)
+    show(
+        *[r.locals for r in res],
+        names=[r.name if r.name else idx for idx, r in enumerate(res)],
+    )
 
 
 def main():
