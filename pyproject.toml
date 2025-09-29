@@ -28,3 +28,10 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "prints"
 module-root = ""
+
+# disable warnings for splat imports
+[tool.ruff.lint]
+ignore = ["F403", "F405"]
+
+[tool.pyright]
+reportWildcardImportFromLibrary = false

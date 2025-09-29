@@ -1,4 +1,4 @@
-import build123d as b
+from build123d import *
 
 from prints import ParamsBase, Result
 from prints.constants import M3X5_7_INSERT
@@ -57,25 +57,25 @@ def _shroud_plate(params: Params) -> Result:
         (width / 2, height / 2),
         (width / 2, -height / 2),
     ]
-    with b.BuildPart() as part:
-        with b.BuildSketch() as part_sk:
-            with b.BuildLine() as line:
-                b.Line(points[:2])
-                b.Line(points[1:3])
-                b.Line(points[2:])
-                b.RadiusArc(
+    with BuildPart() as part:
+        with BuildSketch() as part_sk:
+            with BuildLine() as line:
+                Line(points[:2])
+                Line(points[1:3])
+                Line(points[2:])
+                RadiusArc(
                     start_point=points[0], end_point=points[-1], radius=params.shroud_d
                 )
-            b.make_face()
+            make_face()
 
-            with b.GridLocations(params.shroud_plate_screw_separation, 0, 2, 1):
-                b.Circle(radius=params.shroud_plate_screw_d / 2, mode=b.Mode.SUBTRACT)
+            with GridLocations(params.shroud_plate_screw_separation, 0, 2, 1):
+                Circle(radius=params.shroud_plate_screw_d / 2, mode=Mode.SUBTRACT)
 
-        b.extrude(amount=params.shroud_plate_thickness)
+        extrude(amount=params.shroud_plate_thickness)
 
-        edges = [e for e in part.edges().filter_by(b.Axis.Z) if e.center().Y > 0]
+        edges = [e for e in part.edges().filter_by(Axis.Z) if e.center().Y > 0]
 
-        b.fillet(edges, radius=params.shroud_plate_fillet)
+        fillet(edges, radius=params.shroud_plate_fillet)
 
     assert part.part
     return Result(name="shroud_plate", part=part.part, locals=locals())
@@ -86,34 +86,34 @@ def _driver_plate(params: Params) -> Result:
     total_length = params.driver_mount + params.driver_mount_overhang_x * 2
     screw_hole_d = params.screw_d + params.screw_spacing
     driver_screw_hole_d = params.driver_screw_d + params.driver_screw_spacing
-    with b.BuildPart() as plate:
-        b.Box(
+    with BuildPart() as plate:
+        Box(
             length=total_length, width=total_width, height=params.driver_plate_thickness
         )
 
-        edges = plate.edges().filter_by(b.Axis.Z)
+        edges = plate.edges().filter_by(Axis.Z)
 
-        b.fillet(edges, radius=params.driver_mount_overhang_x)
-        topf = plate.faces().sort_by(b.Axis.Z).last
-        b.chamfer(topf.edges(), length=2)
+        fillet(edges, radius=params.driver_mount_overhang_x)
+        topf = plate.faces().sort_by(Axis.Z).last
+        chamfer(topf.edges(), length=2)
 
-        topf = plate.faces().sort_by(b.Axis.Z).last
-        with b.Locations(topf):
-            with b.GridLocations(
+        topf = plate.faces().sort_by(Axis.Z).last
+        with Locations(topf):
+            with GridLocations(
                 params.driver_length - screw_hole_d * 2,
                 params.driver_width - screw_hole_d * 2,
                 2,
                 2,
             ) as screw_locs:
-                b.CounterBoreHole(
+                CounterBoreHole(
                     radius=screw_hole_d / 2,
                     counter_bore_radius=params.screw_head_d / 2,
                     counter_bore_depth=params.driver_plate_thickness
                     - params.driver_plate_min_thickness,
                 )
 
-            with b.GridLocations(params.driver_mount, 0, 2, 1) as driver_screw_locs:
-                b.Hole(radius=driver_screw_hole_d / 2)
+            with GridLocations(params.driver_mount, 0, 2, 1) as driver_screw_locs:
+                Hole(radius=driver_screw_hole_d / 2)
 
     assert plate.part
     return Result(name="driver_plate", part=plate.part, locals=locals())
@@ -129,79 +129,79 @@ def _ring(params: Params) -> Result:
 
     arc_size = 360 / params.segments
 
-    with b.BuildPart() as ring:
-        with b.BuildSketch() as ring_sk:
-            with b.BuildLine() as ring_outline:
-                outer_arc = b.CenterArc(
+    with BuildPart() as ring:
+        with BuildSketch() as ring_sk:
+            with BuildLine() as ring_outline:
+                outer_arc = CenterArc(
                     (0, 0),
                     radius=outer_d / 2,
                     start_angle=0,
                     arc_size=arc_size,
                 )
-                inner_arc = b.CenterArc(
+                inner_arc = CenterArc(
                     (0, 0),
                     radius=inner_d / 2,
                     start_angle=0,
                     arc_size=arc_size,
                 )
-                b.Line(outer_arc @ 0, inner_arc @ 0)
-                b.Line(outer_arc @ 1, inner_arc @ 1)
-            b.make_face()
+                Line(outer_arc @ 0, inner_arc @ 0)
+                Line(outer_arc @ 1, inner_arc @ 1)
+            make_face()
 
-            with b.BuildLine() as peg_male:
+            with BuildLine() as peg_male:
                 peg_inner_d = center_d - params.peg_w + params.peg_spacing / 2
                 peg_outer_d = center_d + params.peg_w - params.peg_spacing / 2
-                peg_outer_arc = b.CenterArc(
+                peg_outer_arc = CenterArc(
                     (0, 0),
                     radius=peg_outer_d / 2,
                     start_angle=-params.peg_rad,
                     arc_size=params.peg_rad,
                 )
-                peg_inner_arc = b.CenterArc(
+                peg_inner_arc = CenterArc(
                     (0, 0),
                     radius=peg_inner_d / 2,
                     start_angle=-params.peg_rad,
                     arc_size=params.peg_rad,
                 )
-                b.Line(peg_outer_arc @ 0, peg_inner_arc @ 0)
-                b.Line(peg_outer_arc @ 1, peg_inner_arc @ 1)
-            b.make_face()
+                Line(peg_outer_arc @ 0, peg_inner_arc @ 0)
+                Line(peg_outer_arc @ 1, peg_inner_arc @ 1)
+            make_face()
 
-            with b.BuildLine() as peg_female:
+            with BuildLine() as peg_female:
                 peg_inner_d = center_d - params.peg_w
                 peg_outer_d = center_d + params.peg_w
-                peg_outer_arc = b.CenterArc(
+                peg_outer_arc = CenterArc(
                     (0, 0),
                     radius=peg_outer_d / 2,
                     start_angle=arc_size - params.peg_rad,
                     arc_size=params.peg_rad,
                 )
-                peg_inner_arc = b.CenterArc(
+                peg_inner_arc = CenterArc(
                     (0, 0),
                     radius=peg_inner_d / 2,
                     start_angle=arc_size - params.peg_rad,
                     arc_size=params.peg_rad,
                 )
-                b.Line(peg_outer_arc @ 0, peg_inner_arc @ 0)
-                b.Line(peg_outer_arc @ 1, peg_inner_arc @ 1)
-            b.make_face(mode=b.Mode.SUBTRACT)
+                Line(peg_outer_arc @ 0, peg_inner_arc @ 0)
+                Line(peg_outer_arc @ 1, peg_inner_arc @ 1)
+            make_face(mode=Mode.SUBTRACT)
 
-            with b.BuildLine(mode=b.Mode.PRIVATE) as slot:
+            with BuildLine(mode=Mode.PRIVATE) as slot:
                 slot_width = 360 / 12
-                b.CenterArc(
+                CenterArc(
                     (0, 0),
                     radius=center_d / 2,
                     start_angle=360 / (params.segments * 2) - slot_width / 2,
                     arc_size=360 / (params.segments * 4),
                 )
-            b.SlotArc(
+            SlotArc(
                 arc=slot.edges()[0],
                 height=screw_opening,
                 rotation=0,
-                mode=b.Mode.SUBTRACT,
+                mode=Mode.SUBTRACT,
             )
 
-        b.extrude(amount=ring_height)
+        extrude(amount=ring_height)
 
     assert ring.part
     return Result(name="ring", part=ring.part, locals=locals())
@@ -212,47 +212,47 @@ def _bracket(params: Params) -> Result:
     bracket_total_height = params.bracket_width + params.bracket_thickness * 2
     bracket_total_d = bracket_d + params.bracket_lip * 2
 
-    with b.BuildPart() as bracket:
-        with b.BuildSketch() as bracket_sk:
-            with b.BuildLine() as bracket_outline:
-                arc = b.CenterArc(
+    with BuildPart() as bracket:
+        with BuildSketch() as bracket_sk:
+            with BuildLine() as bracket_outline:
+                arc = CenterArc(
                     (0, 0),
                     radius=bracket_total_d / 2,
                     start_angle=360 - params.bracket_rad / 2,
                     arc_size=params.bracket_rad,
                 )
-                b.Line(arc @ 0, arc @ 1)
-            b.make_face()
-        b.extrude(amount=bracket_total_height)
+                Line(arc @ 0, arc @ 1)
+            make_face()
+        extrude(amount=bracket_total_height)
 
         assert bracket.part
 
         # bracket groove
-        with b.BuildSketch(
-            b.Plane(origin=bracket.part.center(), z_dir=(-1, 0, 0))
+        with BuildSketch(
+            Plane(origin=bracket.part.center(), z_dir=(-1, 0, 0))
         ) as lip_sk:
-            with b.Locations((0, bracket_total_d / 2)):
-                b.Polygon(
+            with Locations((0, bracket_total_d / 2)):
+                Polygon(
                     (0, 0),
                     (-params.bracket_lip, params.bracket_lip),
                     (params.bracket_width, params.bracket_lip),
                     (params.bracket_width, 0),
-                    align=(b.Align.CENTER, b.Align.MAX),
+                    align=(Align.CENTER, Align.MAX),
                 )
-        b.revolve(lip_sk.sketch.face(), axis=b.Axis.Z, mode=b.Mode.SUBTRACT)
+        revolve(lip_sk.sketch.face(), axis=Axis.Z, mode=Mode.SUBTRACT)
 
-        plane = b.Plane(origin=bracket.part.center(), z_dir=(-1, 0, 0))
+        plane = Plane(origin=bracket.part.center(), z_dir=(-1, 0, 0))
         # LED track
-        with b.BuildSketch(plane) as cutout_sk:
-            b.Rectangle(
+        with BuildSketch(plane) as cutout_sk:
+            Rectangle(
                 bracket_total_height + 1, params.ring_width + params.ring_led_offset * 2
             )
-        b.extrude(amount=bracket_total_d, mode=b.Mode.SUBTRACT)
+        extrude(amount=bracket_total_d, mode=Mode.SUBTRACT)
 
         # insert
-        with b.BuildSketch(plane) as insert_sk:
-            b.Circle(radius=M3X5_7_INSERT.diameter / 2)
-        b.extrude(amount=-M3X5_7_INSERT.depth, mode=b.Mode.SUBTRACT)
+        with BuildSketch(plane) as insert_sk:
+            Circle(radius=M3X5_7_INSERT.diameter / 2)
+        extrude(amount=-M3X5_7_INSERT.depth, mode=Mode.SUBTRACT)
 
     return Result(name="bracket", part=bracket.part, locals=locals())
 
