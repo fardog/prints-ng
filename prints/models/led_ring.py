@@ -39,6 +39,46 @@ class Params(ParamsBase):
     driver_plate_min_thickness: float = 1.5
     driver_screw_d: float = 4
     driver_screw_spacing: float = 0.5
+    shroud_d: float = 300
+    shroud_plate_width: float = 60
+    shroud_plate_height: float = 50
+    shroud_plate_thickness: float = 1.5
+    shroud_plate_fillet: float = 15
+    shroud_plate_screw_separation: float = 50
+    shroud_plate_screw_d: float = 4
+
+
+def _shroud_plate(params: Params) -> Result:
+    width = params.shroud_plate_width
+    height = params.shroud_plate_height
+    points = [
+        (-width / 2, -height / 2),
+        (-width / 2, height / 2),
+        (width / 2, height / 2),
+        (width / 2, -height / 2),
+    ]
+    with b.BuildPart() as part:
+        with b.BuildSketch() as part_sk:
+            with b.BuildLine() as line:
+                b.Line(points[:2])
+                b.Line(points[1:3])
+                b.Line(points[2:])
+                b.RadiusArc(
+                    start_point=points[0], end_point=points[-1], radius=params.shroud_d
+                )
+            b.make_face()
+
+            with b.GridLocations(params.shroud_plate_screw_separation, 0, 2, 1):
+                b.Circle(radius=params.shroud_plate_screw_d / 2, mode=b.Mode.SUBTRACT)
+
+        b.extrude(amount=params.shroud_plate_thickness)
+
+        edges = [e for e in part.edges().filter_by(b.Axis.Z) if e.center().Y > 0]
+
+        b.fillet(edges, radius=params.shroud_plate_fillet)
+
+    assert part.part
+    return Result(name="shroud_plate", part=part.part, locals=locals())
 
 
 def _driver_plate(params: Params) -> Result:
@@ -222,4 +262,5 @@ def main(params: Params) -> list[Result]:
         _ring(params),
         _bracket(params),
         _driver_plate(params),
+        _shroud_plate(params),
     ]

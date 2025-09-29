@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from dataclasses import dataclass
 from inspect import Parameter, signature
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 from build123d import Part
 

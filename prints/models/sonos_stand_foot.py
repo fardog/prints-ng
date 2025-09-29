@@ -40,4 +40,5 @@ def main(params: Params) -> Result:
             b.Circle(radius=leg_r)
         b.extrude(amount=params.height, mode=b.Mode.SUBTRACT)
 
+    assert part.part
     return Result(part=part.part, locals=locals())
