@@ -1,7 +1,14 @@
-from collections import OrderedDict
+from argparse import (
+    ArgumentParser,
+    Action,
+    BooleanOptionalAction,
+    Namespace,
+)
+from collections import ChainMap
+from collections.abc import Sequence
 from dataclasses import dataclass
 from inspect import Parameter, signature
-from typing import Any, Mapping
+from typing import Any, Mapping, override
 
 from build123d import Part
 
@@ -13,23 +20,12 @@ class Result:
     name: str | None = None
 
 
-class ParamsMeta(type):
+class ParamsBase:
     @classmethod
-    def __prepare__(cls, *args, **kwargs):
-        return OrderedDict()
-
-    def __new__(cls, name, bases, classdict):
-        keys = [key for key in classdict.keys() if not key.startswith("__")]
-
-        classdict["__ordered__"] = sorted(keys)
-
-        return type.__new__(cls, name, bases, classdict)
-
-
-class ParamsBase(object, metaclass=ParamsMeta):
-    def __iter__(self):
-        for attr in self.__ordered__:
-            yield getattr(self, attr)
+    def annotations(cls) -> ChainMap:
+        return ChainMap(
+            *(c.__annotations__ for c in cls.__mro__ if "__annotations__" in c.__dict__)
+        )
 
 
 def _getargspec(
@@ -80,6 +76,82 @@ def check_module(mod) -> None:
         raise TypeError(
             f"module may not contain kwargs without defaults; found {', '.join(kwargs_without_default)}"
         )
+
+
+class PrefixedAction(Action):
+    def __init__(self, *args, prefix: str | None, **kwargs):
+        self._prefix = prefix
+        super().__init__(*args, **kwargs)
+
+    @override
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        if self._prefix:
+            namespace = getattr(namespace, self._prefix)
+
+        if option_string in self.option_strings:
+            setattr(namespace, self.dest, values)
+
+
+class PrefixedBooleanAction(BooleanOptionalAction):
+    def __init__(self, *args, prefix: str | None, **kwargs):
+        self._prefix = prefix
+        super().__init__(*args, **kwargs)
+
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        if self._prefix:
+            namespace = getattr(namespace, self._prefix)
+
+        return super().__call__(parser, namespace, values, option_string)
+
+
+def _join_prefix(dest: str, prefix: str | None = None) -> str:
+    if not prefix:
+        return dest
+
+    return f"{prefix}_{dest}"
+
+
+def _add_param_parser_args(
+    param_parser: ArgumentParser, cls: type[ParamsBase], *, prefix: str | None = None
+) -> None:
+    for k, v in cls.annotations().items():
+        if issubclass(v, ParamsBase):
+            _add_param_parser_args(param_parser, v, prefix=k)
+            continue
+
+        kwargs = {
+            "dest": k,
+            "type": v,
+            "default": getattr(cls, k),
+            "prefix": prefix,
+            "action": PrefixedAction,
+        }
+
+        if v is bool:
+            del kwargs["type"]
+            kwargs["action"] = PrefixedBooleanAction
+
+        param_parser.add_argument(f"--{_join_prefix(k, prefix)}", **kwargs)
+
+
+def create_param_parser(
+    cls: type[ParamsBase], *, description: str | None
+) -> ArgumentParser:
+    param_parser = ArgumentParser(description=description)
+    _add_param_parser_args(param_parser, cls)
+    return param_parser
 
 
 @dataclass(frozen=True)

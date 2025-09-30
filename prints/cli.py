@@ -10,7 +10,7 @@ from importlib import import_module
 
 from build123d import export_step, export_stl
 
-from prints import Result
+from prints import Result, create_param_parser
 
 
 def split_args(args: List[str]) -> Tuple[List[str], List[str]]:
@@ -119,21 +119,7 @@ def main():
     mod = import_module("prints.models.{}".format(mod_name))
     check_module(mod)
 
-    param_parser = ArgumentParser(description=mod.__doc__)
-    for k, v in mod.Params.__annotations__.items():
-        kwargs = {
-            "dest": k,
-            "type": v,
-            "default": getattr(mod.Params, k),
-        }
-        if v is bool:
-            del kwargs["type"]
-            param_parser.add_argument(
-                "--no-{}".format(k), action="store_false", **kwargs
-            )
-            kwargs["action"] = "store_true"
-        param_parser.add_argument("--{}".format(k), **kwargs)
-
+    param_parser = create_param_parser(mod.Params, description=mod.__doc__)
     params = mod.Params()
     param_parser.parse_args(raw_params, namespace=params)
 

@@ -1,3 +1,5 @@
+"""LED Ring"""
+
 from build123d import *
 
 from prints import ParamsBase, Result
@@ -11,49 +13,67 @@ TLE_BULB_INNER_D = (236.5 + 246.1) / 2
 TLE_BULB_CENTER_D = TLE_BULB_INNER_D + TLE_BULB_D / 2
 
 
-class Params(ParamsBase):
+class DriverParams(ParamsBase):
+    width: float = 46
+    length: float = 95
+    mount: float = 140
+    mount_overhang_x: float = 5
+    mount_overhang_y: float = 0.5
+    plate_thickness: float = 6
+    plate_min_thickness: float = 1.5
+    screw_d: float = 4
+    screw_spacing: float = 0.5
+
+
+class ShroudPlateParams(ParamsBase):
+    d: float = 330
+    width_upper: float = 98
+    width_lower: float = 90
+    height: float = 53
+    thickness: float = 2
+    fillet: float = 10
+    screw_offset: float = -2.5
+    screw_separation: float = 85
+    screw_d: float = 5.5
+
+
+class BracketParams(ParamsBase):
     bulb_d: float = TLE_BULB_D
     bulb_padding: float = 2
-    ring_center_d: float = 275
-    ring_width: float = 10
-    ring_led_offset: float = 4
-    ring_height: float = 8
-    min_thickness: float = 4
-    bracket_rad: float = 290
-    bracket_width: float = 13
-    bracket_thickness: float = 4
-    bracket_lip: float = 3
-    screw_d: float = 3
-    screw_head_d: float = 6
-    screw_spacing: float = 0.5
+    rad: float = 290
+    width: float = 13
+    thickness: float = 4
+    lip: float = 3
+
+
+class RingParams(ParamsBase):
     peg_w: float = 5
     peg_spacing: float = 0.3
     peg_rad: float = 5
+    center_d: float = 275
+    width: float = 10
+    led_offset: float = 4
+    height: float = 8
     segments: int = 3
-    driver_width: float = 46
-    driver_length: float = 95
-    driver_mount: float = 140
-    driver_mount_overhang_x: float = 5
-    driver_mount_overhang_y: float = 0.5
-    driver_plate_thickness: float = 6
-    driver_plate_min_thickness: float = 1.5
-    driver_screw_d: float = 4
-    driver_screw_spacing: float = 0.5
-    shroud_d: float = 330
-    shroud_plate_width_upper: float = 98
-    shroud_plate_width_lower: float = 90
-    shroud_plate_height: float = 53
-    shroud_plate_thickness: float = 2
-    shroud_plate_fillet: float = 10
-    shroud_plate_screw_offset: float = -2.5
-    shroud_plate_screw_separation: float = 85
-    shroud_plate_screw_d: float = 5.5
 
 
-def _shroud_plate(params: Params) -> Result:
-    width_upper = params.shroud_plate_width_upper
-    width_lower = params.shroud_plate_width_lower
-    height = params.shroud_plate_height
+class _Shared(ParamsBase):
+    screw_d: float = 3
+    screw_head_d: float = 6
+    screw_spacing: float = 0.5
+
+
+class Params(_Shared):
+    ring: RingParams = RingParams()
+    bracket: BracketParams = BracketParams()
+    driver: DriverParams = DriverParams()
+    shroud: ShroudPlateParams = ShroudPlateParams()
+
+
+def _shroud_plate(params: ShroudPlateParams) -> Result:
+    width_upper = params.width_upper
+    width_lower = params.width_lower
+    height = params.height
     points = [
         (-width_lower / 2, -height / 2),  # bottom left
         (-width_upper / 2, height / 2),  # top left
@@ -67,75 +87,73 @@ def _shroud_plate(params: Params) -> Result:
                 RadiusArc(
                     start_point=points[1],
                     end_point=points[2],
-                    radius=(params.shroud_d + height) / 2,
+                    radius=(params.d + height) / 2,
                 )
                 Line(points[2:])
                 RadiusArc(
                     start_point=points[0],
                     end_point=points[-1],
-                    radius=params.shroud_d / 2,
+                    radius=params.d / 2,
                 )
             make_face()
 
-            with Locations((0, params.shroud_plate_screw_offset)):
-                with GridLocations(params.shroud_plate_screw_separation, 0, 2, 1):
-                    Circle(radius=params.shroud_plate_screw_d / 2, mode=Mode.SUBTRACT)
+            with Locations((0, params.screw_offset)):
+                with GridLocations(params.screw_separation, 0, 2, 1):
+                    Circle(radius=params.screw_d / 2, mode=Mode.SUBTRACT)
 
-        extrude(amount=params.shroud_plate_thickness)
+        extrude(amount=params.thickness)
 
         edges = [e for e in part.edges().filter_by(Axis.Z) if e.center().Y > 0]
 
-        fillet(edges, radius=params.shroud_plate_fillet)
+        fillet(edges, radius=params.fillet)
 
     assert part.part
     return Result(name="shroud_plate", part=part.part, locals=locals())
 
 
-def _driver_plate(params: Params) -> Result:
-    total_width = params.driver_width + params.driver_mount_overhang_y * 2
-    total_length = params.driver_mount + params.driver_mount_overhang_x * 2
-    screw_hole_d = params.screw_d + params.screw_spacing
-    driver_screw_hole_d = params.driver_screw_d + params.driver_screw_spacing
+def _driver_plate(shared: _Shared, params: DriverParams) -> Result:
+    total_width = params.width + params.mount_overhang_y * 2
+    total_length = params.mount + params.mount_overhang_x * 2
+    screw_hole_d = shared.screw_d + shared.screw_spacing
+    driver_screw_hole_d = params.screw_d + params.screw_spacing
     with BuildPart() as plate:
-        Box(
-            length=total_length, width=total_width, height=params.driver_plate_thickness
-        )
+        Box(length=total_length, width=total_width, height=params.plate_thickness)
 
         edges = plate.edges().filter_by(Axis.Z)
 
-        fillet(edges, radius=params.driver_mount_overhang_x)
+        fillet(edges, radius=params.mount_overhang_x)
         topf = plate.faces().sort_by(Axis.Z).last
         chamfer(topf.edges(), length=2)
 
         topf = plate.faces().sort_by(Axis.Z).last
         with Locations(topf):
             with GridLocations(
-                params.driver_length - screw_hole_d * 2,
-                params.driver_width - screw_hole_d * 2,
+                params.length - screw_hole_d * 2,
+                params.width - screw_hole_d * 2,
                 2,
                 2,
             ) as screw_locs:
                 CounterBoreHole(
                     radius=screw_hole_d / 2,
-                    counter_bore_radius=params.screw_head_d / 2,
-                    counter_bore_depth=params.driver_plate_thickness
-                    - params.driver_plate_min_thickness,
+                    counter_bore_radius=shared.screw_head_d / 2,
+                    counter_bore_depth=params.plate_thickness
+                    - params.plate_min_thickness,
                 )
 
-            with GridLocations(params.driver_mount, 0, 2, 1) as driver_screw_locs:
+            with GridLocations(params.mount, 0, 2, 1) as driver_screw_locs:
                 Hole(radius=driver_screw_hole_d / 2)
 
     assert plate.part
     return Result(name="driver_plate", part=plate.part, locals=locals())
 
 
-def _ring(params: Params) -> Result:
-    center_d = params.ring_center_d
-    ring_thickness = params.ring_width
-    ring_height = params.ring_height
+def _ring(shared: _Shared, params: RingParams) -> Result:
+    center_d = params.center_d
+    ring_thickness = params.width
+    ring_height = params.height
     inner_d = center_d - ring_thickness
     outer_d = center_d + ring_thickness
-    screw_opening = params.screw_d + params.screw_spacing
+    screw_opening = shared.screw_d + shared.screw_spacing
 
     arc_size = 360 / params.segments
 
@@ -217,10 +235,10 @@ def _ring(params: Params) -> Result:
     return Result(name="ring", part=ring.part, locals=locals())
 
 
-def _bracket(params: Params) -> Result:
+def _bracket(ring: RingParams, params: BracketParams) -> Result:
     bracket_d = params.bulb_d + params.bulb_padding
-    bracket_total_height = params.bracket_width + params.bracket_thickness * 2
-    bracket_total_d = bracket_d + params.bracket_lip * 2
+    bracket_total_height = params.width + params.thickness * 2
+    bracket_total_d = bracket_d + params.lip * 2
 
     with BuildPart() as bracket:
         with BuildSketch() as bracket_sk:
@@ -228,8 +246,8 @@ def _bracket(params: Params) -> Result:
                 arc = CenterArc(
                     (0, 0),
                     radius=bracket_total_d / 2,
-                    start_angle=360 - params.bracket_rad / 2,
-                    arc_size=params.bracket_rad,
+                    start_angle=360 - params.rad / 2,
+                    arc_size=params.rad,
                 )
                 Line(arc @ 0, arc @ 1)
             make_face()
@@ -244,9 +262,9 @@ def _bracket(params: Params) -> Result:
             with Locations((0, bracket_total_d / 2)):
                 Polygon(
                     (0, 0),
-                    (-params.bracket_lip, params.bracket_lip),
-                    (params.bracket_width, params.bracket_lip),
-                    (params.bracket_width, 0),
+                    (-params.lip, params.lip),
+                    (params.width, params.lip),
+                    (params.width, 0),
                     align=(Align.CENTER, Align.MAX),
                 )
         revolve(lip_sk.sketch.face(), axis=Axis.Z, mode=Mode.SUBTRACT)
@@ -254,9 +272,7 @@ def _bracket(params: Params) -> Result:
         plane = Plane(origin=bracket.part.center(), z_dir=(-1, 0, 0))
         # LED track
         with BuildSketch(plane) as cutout_sk:
-            Rectangle(
-                bracket_total_height + 1, params.ring_width + params.ring_led_offset * 2
-            )
+            Rectangle(bracket_total_height + 1, ring.width + ring.led_offset * 2)
         extrude(amount=bracket_total_d, mode=Mode.SUBTRACT)
 
         # insert
@@ -269,8 +285,8 @@ def _bracket(params: Params) -> Result:
 
 def main(params: Params) -> list[Result]:
     return [
-        _ring(params),
-        _bracket(params),
-        _driver_plate(params),
-        _shroud_plate(params),
+        _ring(params, params.ring),
+        _bracket(params.ring, params.bracket),
+        _driver_plate(params, params.driver),
+        _shroud_plate(params.shroud),
     ]
