@@ -39,37 +39,47 @@ class Params(ParamsBase):
     driver_plate_min_thickness: float = 1.5
     driver_screw_d: float = 4
     driver_screw_spacing: float = 0.5
-    shroud_d: float = 300
-    shroud_plate_width: float = 60
-    shroud_plate_height: float = 50
-    shroud_plate_thickness: float = 1.5
-    shroud_plate_fillet: float = 15
-    shroud_plate_screw_separation: float = 50
-    shroud_plate_screw_d: float = 4
+    shroud_d: float = 330
+    shroud_plate_width_upper: float = 98
+    shroud_plate_width_lower: float = 90
+    shroud_plate_height: float = 53
+    shroud_plate_thickness: float = 2
+    shroud_plate_fillet: float = 10
+    shroud_plate_screw_offset: float = -2.5
+    shroud_plate_screw_separation: float = 85
+    shroud_plate_screw_d: float = 5.5
 
 
 def _shroud_plate(params: Params) -> Result:
-    width = params.shroud_plate_width
+    width_upper = params.shroud_plate_width_upper
+    width_lower = params.shroud_plate_width_lower
     height = params.shroud_plate_height
     points = [
-        (-width / 2, -height / 2),
-        (-width / 2, height / 2),
-        (width / 2, height / 2),
-        (width / 2, -height / 2),
+        (-width_lower / 2, -height / 2),  # bottom left
+        (-width_upper / 2, height / 2),  # top left
+        (width_upper / 2, height / 2),  # top right
+        (width_lower / 2, -height / 2),  # bottom right
     ]
     with BuildPart() as part:
         with BuildSketch() as part_sk:
             with BuildLine() as line:
                 Line(points[:2])
-                Line(points[1:3])
+                RadiusArc(
+                    start_point=points[1],
+                    end_point=points[2],
+                    radius=(params.shroud_d + height) / 2,
+                )
                 Line(points[2:])
                 RadiusArc(
-                    start_point=points[0], end_point=points[-1], radius=params.shroud_d
+                    start_point=points[0],
+                    end_point=points[-1],
+                    radius=params.shroud_d / 2,
                 )
             make_face()
 
-            with GridLocations(params.shroud_plate_screw_separation, 0, 2, 1):
-                Circle(radius=params.shroud_plate_screw_d / 2, mode=Mode.SUBTRACT)
+            with Locations((0, params.shroud_plate_screw_offset)):
+                with GridLocations(params.shroud_plate_screw_separation, 0, 2, 1):
+                    Circle(radius=params.shroud_plate_screw_d / 2, mode=Mode.SUBTRACT)
 
         extrude(amount=params.shroud_plate_thickness)
 

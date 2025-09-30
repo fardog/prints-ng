@@ -135,9 +135,7 @@ def main():
         param_parser.add_argument("--{}".format(k), **kwargs)
 
     params = mod.Params()
-    for k, v in param_parser.parse_args(raw_params).__dict__.items():
-        if v is not None:
-            setattr(params, k, v)
+    param_parser.parse_args(raw_params, namespace=params)
 
     args.func(mod_name, mod, args=args, params=params)
 
