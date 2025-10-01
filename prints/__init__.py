@@ -8,7 +8,7 @@ from collections import ChainMap
 from collections.abc import Sequence
 from dataclasses import dataclass
 from inspect import Parameter, signature
-from typing import Any, Mapping, override
+from typing import Any, Mapping, override, get_type_hints
 
 from build123d import Part
 
@@ -23,9 +23,7 @@ class Result:
 class ParamsBase:
     @classmethod
     def annotations(cls) -> ChainMap:
-        return ChainMap(
-            *(c.__annotations__ for c in cls.__mro__ if "__annotations__" in c.__dict__)
-        )
+        return ChainMap(*(get_type_hints(c) for c in cls.__mro__))
 
 
 def _getargspec(
@@ -79,8 +77,8 @@ def check_module(mod) -> None:
 
 
 class PrefixedAction(Action):
-    def __init__(self, *args, prefix: str | None, **kwargs):
-        self._prefix = prefix
+    def __init__(self, *args, prefixes: list[str] | None, **kwargs):
+        self._prefixes = prefixes or []
         super().__init__(*args, **kwargs)
 
     @override
@@ -91,16 +89,16 @@ class PrefixedAction(Action):
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ) -> None:
-        if self._prefix:
-            namespace = getattr(namespace, self._prefix)
+        for prefix in self._prefixes:
+            namespace = getattr(namespace, prefix)
 
         if option_string in self.option_strings:
             setattr(namespace, self.dest, values)
 
 
 class PrefixedBooleanAction(BooleanOptionalAction):
-    def __init__(self, *args, prefix: str | None, **kwargs):
-        self._prefix = prefix
+    def __init__(self, *args, prefixes: list[str] | None, **kwargs):
+        self._prefixes = prefixes or []
         super().__init__(*args, **kwargs)
 
     def __call__(
@@ -110,32 +108,37 @@ class PrefixedBooleanAction(BooleanOptionalAction):
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ) -> None:
-        if self._prefix:
-            namespace = getattr(namespace, self._prefix)
+        for prefix in self._prefixes:
+            namespace = getattr(namespace, prefix)
 
         return super().__call__(parser, namespace, values, option_string)
 
 
-def _join_prefix(dest: str, prefix: str | None = None) -> str:
-    if not prefix:
+def _join_prefix(dest: str, prefixes: list[str] | None = None) -> str:
+    if not prefixes:
         return dest
 
-    return f"{prefix}_{dest}"
+    return f"{'_'.join(prefixes)}_{dest}"
 
 
 def _add_param_parser_args(
-    param_parser: ArgumentParser, cls: type[ParamsBase], *, prefix: str | None = None
+    param_parser: ArgumentParser,
+    cls: type[ParamsBase],
+    *,
+    prefixes: list[str] | None = None,
 ) -> None:
     for k, v in cls.annotations().items():
         if issubclass(v, ParamsBase):
-            _add_param_parser_args(param_parser, v, prefix=k)
+            if not prefixes:
+                prefixes = []
+            _add_param_parser_args(param_parser, v, prefixes=[*prefixes, k])
             continue
 
         kwargs = {
             "dest": k,
             "type": v,
             "default": getattr(cls, k),
-            "prefix": prefix,
+            "prefixes": prefixes,
             "action": PrefixedAction,
         }
 
@@ -143,7 +146,7 @@ def _add_param_parser_args(
             del kwargs["type"]
             kwargs["action"] = PrefixedBooleanAction
 
-        param_parser.add_argument(f"--{_join_prefix(k, prefix)}", **kwargs)
+        param_parser.add_argument(f"--{_join_prefix(k, prefixes)}", **kwargs)
 
 
 def create_param_parser(
