@@ -30,6 +30,15 @@ wheels = [
 ]
 
 [[package]]
+name = "bd-warehouse"
+version = "0.1.dev180+g97112a02d"
+source = { git = "https://github.com/gumyr/bd_warehouse?rev=97112a02d9538d57740a005a7802dd149d797568#97112a02d9538d57740a005a7802dd149d797568" }
+dependencies = [
+    { name = "build123d" },
+    { name = "typing-extensions" },
+]
+
+[[package]]
 name = "blinker"
 version = "1.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -634,6 +643,7 @@ name = "prints-ng"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "bd-warehouse" },
     { name = "build123d" },
 ]
 
@@ -645,7 +655,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "build123d", specifier = "~=0.9.1" }]
+requires-dist = [
+    { name = "bd-warehouse", git = "https://github.com/gumyr/bd_warehouse?rev=97112a02d9538d57740a005a7802dd149d797568" },
+    { name = "build123d", specifier = "~=0.9.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [

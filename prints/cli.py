@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from collections.abc import Iterable
 import datetime
 import os
 import sys

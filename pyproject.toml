@@ -8,6 +8,7 @@ license = "CC-BY-NC-4.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "bd-warehouse",
     "build123d~=0.9.1",
 ]
 
@@ -28,6 +29,9 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "prints"
 module-root = ""
+
+[tool.uv.sources]
+bd-warehouse = { git = "https://github.com/gumyr/bd_warehouse", rev = "97112a02d9538d57740a005a7802dd149d797568" }
 
 # disable warnings for splat imports
 [tool.ruff.lint]

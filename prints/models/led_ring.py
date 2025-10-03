@@ -1,6 +1,21 @@
-"""LED Ring"""
+"""
+Gruber Magnifying Lamp LED Conversion
+
+Consists of the following parts:
+    - driver_plate: Mount for the LED driver board, which sits in the base
+    - shroud_plate: Plate for the lamp shroud, which covers upper electronics
+    - ring: A bulb-sized ring for mounting a LED strip
+    - bracket: Mounting brackets for the LED ring, which mount into the bulb
+      holder
+    - cord_insert: Threaded inserts to protect cord/wires from the metal body
+
+There is a separate part, ``cord_clamp``, which is used for holding the cord on
+the inner and outer surfaces, but is a separate model because it's useful in
+other contexts.
+"""
 
 from build123d import *
+from bd_warehouse import thread
 
 from prints import ParamsBase, Result
 from prints.constants import M3X5_7_INSERT
@@ -57,6 +72,25 @@ class RingParams(ParamsBase):
     segments: int = 3
 
 
+class CordInsertParams(ParamsBase):
+    inner_d: float = 8
+    outer_d: float = 8.5
+    lip_d: float = 12
+    lip_thickness: float = 2
+    insert_distance: float = 4
+    thread_d: float = 10
+    thread_pitch: float = 1.5
+
+
+class CordEndCoverParams(ParamsBase):
+    inner_d: float = 10
+    upper_outer_d: float = 12
+    lower_outer_d: float = 14
+    height: float = 8
+    channel_width: float = 1.5
+    channel_height: float = 3
+
+
 class _Shared(ParamsBase):
     screw_d: float = 3
     screw_head_d: float = 6
@@ -68,6 +102,72 @@ class Params(_Shared):
     bracket: BracketParams = BracketParams()
     driver: DriverParams = DriverParams()
     shroud: ShroudPlateParams = ShroudPlateParams()
+    cord_insert: CordInsertParams = CordInsertParams()
+    cord_end_cover: CordEndCoverParams = CordEndCoverParams()
+
+
+def _cord_end_cover(insert: CordInsertParams, params: CordEndCoverParams) -> Result:
+    with BuildPart() as part:
+        with BuildSketch() as lower_sk:
+            Circle(radius=params.lower_outer_d / 2)
+
+        with BuildSketch(Plane.XY.offset(params.height)) as upper_sk:
+            Circle(radius=params.upper_outer_d / 2)
+
+        loft([lower_sk.sketch, upper_sk.sketch])
+
+        Hole(radius=params.inner_d / 2)
+
+        bottom_f = part.faces().sort_by(Axis.Z).first
+        with BuildSketch(bottom_f) as inset_sk:
+            Circle(radius=insert.lip_d / 2)
+
+        extrude(inset_sk.sketch, amount=-insert.lip_thickness, mode=Mode.SUBTRACT)
+
+        inset_f = part.faces().filter_by(Plane.XY).sort_by(Axis.Z)[1]
+        with BuildSketch(inset_f) as channel_sk:
+            Rectangle(
+                width=params.channel_width, height=params.channel_width + params.inner_d
+            )
+        extrude(channel_sk.sketch, amount=-params.channel_height, mode=Mode.SUBTRACT)
+
+        top_f = part.faces().sort_by(Axis.Z).last
+        inner_edge = sorted(
+            top_f.edges().filter_by(GeomType.CIRCLE), key=lambda e: e.radius
+        )[0]
+        chamfer(inner_edge, length=0.5)
+
+    assert part.part
+    return Result(name="cord_end_cover", part=part.part, locals=locals())
+
+
+def _cord_insert(shared: _Shared, params: CordInsertParams) -> Result:
+    with BuildPart() as part:
+        thread.IsoThread(
+            major_diameter=params.thread_d,
+            pitch=params.thread_pitch,
+            length=params.insert_distance,
+            end_finishes=("square", "chamfer"),
+        )
+
+        with BuildSketch() as insert_sk:
+            Circle(radius=params.outer_d / 2)
+            Circle(radius=params.inner_d / 2, mode=Mode.SUBTRACT)
+        extrude(amount=params.insert_distance)
+
+        with BuildSketch() as base_sk:
+            Circle(radius=params.lip_d / 2)
+            Circle(radius=params.inner_d / 2, mode=Mode.SUBTRACT)
+        extrude(amount=-params.lip_thickness)
+
+        bottomf = part.faces().sort_by(Axis.Z).first
+        edge = sorted(
+            bottomf.edges().filter_by(GeomType.CIRCLE), key=lambda e: e.radius
+        )[0]
+        chamfer(edge, length=(params.lip_d - params.inner_d) / 4)
+
+    assert part.part
+    return Result(name="cord_insert", part=part.part, locals=locals())
 
 
 def _shroud_plate(params: ShroudPlateParams) -> Result:
@@ -289,4 +389,6 @@ def main(params: Params) -> list[Result]:
         _bracket(params.ring, params.bracket),
         _driver_plate(params, params.driver),
         _shroud_plate(params.shroud),
+        _cord_insert(params, params.cord_insert),
+        _cord_end_cover(params.cord_insert, params.cord_end_cover),
     ]
