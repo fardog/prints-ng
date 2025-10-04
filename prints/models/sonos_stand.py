@@ -1,4 +1,4 @@
-import build123d as b
+from build123d import *
 
 from prints import ParamsBase, Result
 
@@ -17,39 +17,37 @@ def main(params: Params) -> Result:
     width = params.width - params.thickness * 2 - params.leg_d
     depth = params.depth - params.thickness * 2 - params.leg_d
 
-    with b.BuildPart() as part:
+    with BuildPart() as part:
         # base
-        with b.BuildSketch():
-            with b.GridLocations(width, depth, 2, 2):
-                b.Circle(radius=params.leg_d / 2 + params.thickness)
-            b.make_hull()
+        with BuildSketch():
+            with GridLocations(width, depth, 2, 2):
+                Circle(radius=params.leg_d / 2 + params.thickness)
+            make_hull()
 
-        b.extrude(amount=params.height)
+        extrude(amount=params.height)
 
         # holes
-        with b.BuildSketch(part.faces().sort_by(b.Axis.Z).first) as holes:
-            with b.GridLocations(width, depth, 2, 2):
-                b.Circle(radius=params.leg_d / 2)
+        with BuildSketch(part.faces().sort_by(Axis.Z).first) as holes:
+            with GridLocations(width, depth, 2, 2):
+                Circle(radius=params.leg_d / 2)
 
-        b.extrude(amount=-params.height, mode=b.Mode.SUBTRACT)
+        extrude(amount=-params.height, mode=Mode.SUBTRACT)
 
-        topf = part.faces().sort_by(b.Axis.Z).last
-        b.offset(amount=-params.thickness, openings=topf)
+        topf = part.faces().sort_by(Axis.Z).last
+        offset(amount=-params.thickness, openings=topf)
 
         if params.fill:
-            b.extrude(holes.sketch, amount=-params.thickness)
+            extrude(holes.sketch, amount=-params.thickness)
 
-        if not part.part:
-            raise ValueError("no part")
-
-        x_faces = part.faces().sort_by(b.Axis.X)
+        x_faces = part.faces().sort_by(Axis.X)
         for f in (x_faces[0], x_faces[-1]):
-            with b.Locations(f):
-                with b.GridLocations(width - 0.1, params.height - 0.1, 2, 1):
-                    b.CounterSinkHole(
+            with Locations(f):
+                with GridLocations(width - 0.1, params.height - 0.1, 2, 1):
+                    CounterSinkHole(
                         radius=params.screw_d / 2,
                         counter_sink_radius=params.screw_d,
                         depth=params.leg_d,
                     )
 
+    assert part.part
     return Result(part=part.part, locals=locals())

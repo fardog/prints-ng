@@ -1,4 +1,4 @@
-import build123d as b
+from build123d import *
 
 from prints import ParamsBase, Result
 
@@ -21,56 +21,55 @@ def _inner(params: Params) -> Result:
     depth = params.depth - params.thickness * 2 - params.inner_offset
     height = params.height - params.thickness
 
-    with b.BuildPart() as part:
-        with b.BuildSketch() as base_sk:
-            b.Rectangle(width=width, height=depth)
+    with BuildPart() as part:
+        with BuildSketch() as base_sk:
+            Rectangle(width=width, height=depth)
 
-        b.extrude(amount=height)
+        extrude(amount=height)
 
-        topf = part.faces().sort_by(b.Axis.Z).last
-        b.offset(amount=-params.thickness, openings=topf)
+        topf = part.faces().sort_by(Axis.Z).last
+        offset(amount=-params.thickness, openings=topf)
 
         exterior_faces = (
-            part.faces().filter_by(b.Plane.YZ)[0:2]
-            + part.faces().filter_by(b.Plane.XZ)[0:2]
+            part.faces().filter_by(Plane.YZ)[0:2]
+            + part.faces().filter_by(Plane.XZ)[0:2]
         )
 
-        basef = part.faces().sort_by(b.Axis.Z)[1]
+        basef = part.faces().sort_by(Axis.Z)[1]
         assert basef.length
         g_width = basef.length - params.thickness * 2
         assert basef.width
         g_depth = basef.width - params.thickness * 2
 
-        with b.BuildSketch(basef) as cut_sk:
-            b.Rectangle(width=g_width, height=g_depth)
+        with BuildSketch(basef) as cut_sk:
+            Rectangle(width=g_width, height=g_depth)
 
-        b.extrude(amount=-params.thickness, mode=b.Mode.SUBTRACT)
+        extrude(amount=-params.thickness, mode=Mode.SUBTRACT)
 
         for f in exterior_faces:
-            with b.BuildSketch(f):
-                b.Circle(radius=params.screw_d / 2)
+            with BuildSketch(f):
+                Circle(radius=params.screw_d / 2)
 
-            b.extrude(amount=-params.thickness, mode=b.Mode.SUBTRACT)
+            extrude(amount=-params.thickness, mode=Mode.SUBTRACT)
 
     assert part.part
     return Result(part=part.part, locals=locals())
 
 
 def _outer(params: Params) -> Result:
-    with b.BuildPart() as part:
-        with b.BuildSketch() as base_sk:
-            b.Rectangle(width=params.width, height=params.depth)
-        b.extrude(amount=params.height)
+    with BuildPart() as part:
+        with BuildSketch() as base_sk:
+            Rectangle(width=params.width, height=params.depth)
+        extrude(amount=params.height)
 
-        topf = part.faces().sort_by(b.Axis.Z).last
-        b.offset(amount=-params.thickness, openings=topf)
+        topf = part.faces().sort_by(Axis.Z).last
+        offset(amount=-params.thickness, openings=topf)
 
         interior_faces = (
-            part.faces().filter_by(b.Plane.YZ)[2:]
-            + part.faces().filter_by(b.Plane.XZ)[2:]
+            part.faces().filter_by(Plane.YZ)[2:] + part.faces().filter_by(Plane.XZ)[2:]
         )
 
-        basef = part.faces().sort_by(b.Axis.Z)[1]
+        basef = part.faces().sort_by(Axis.Z)[1]
         assert basef.length
         g_width = basef.length - params.thickness * 2
         assert basef.width
@@ -79,25 +78,25 @@ def _outer(params: Params) -> Result:
         rect_width = g_width / params.grid_num_x
         rect_depth = g_depth / params.grid_num_y
 
-        with b.BuildSketch(basef) as grid_sk:
-            with b.GridLocations(
+        with BuildSketch(basef) as grid_sk:
+            with GridLocations(
                 x_spacing=rect_width,
                 x_count=params.grid_num_x,
                 y_spacing=rect_depth,
                 y_count=params.grid_num_y,
             ) as grid_locs:
-                b.Rectangle(
+                Rectangle(
                     width=rect_width - params.grid_spacing,
                     height=rect_depth - params.grid_spacing,
                 )
 
-        b.extrude(amount=-params.thickness, mode=b.Mode.SUBTRACT)
+        extrude(amount=-params.thickness, mode=Mode.SUBTRACT)
 
         for f in interior_faces:
-            with b.BuildSketch(f):
-                b.Circle(radius=params.screw_d / 2)
+            with BuildSketch(f):
+                Circle(radius=params.screw_d / 2)
 
-            b.extrude(amount=-params.thickness, mode=b.Mode.SUBTRACT)
+            extrude(amount=-params.thickness, mode=Mode.SUBTRACT)
 
     assert part.part
     return Result(part=part.part, locals=locals())
