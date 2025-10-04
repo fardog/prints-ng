@@ -1,4 +1,4 @@
-from prints import ThreadedInsert
+from .params import ThreadedInsert
 
 
 # M3x3.0mm - 4mm diameter, min 4mm deep; min 1.6mm wall

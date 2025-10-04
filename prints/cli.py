@@ -2,13 +2,102 @@
 import datetime
 import os
 import sys
-from types import ModuleType
-from argparse import ArgumentParser, BooleanOptionalAction, Namespace
+from argparse import (
+    Action,
+    ArgumentParser,
+    BooleanOptionalAction,
+    Namespace,
+)
+from collections.abc import Sequence
 from importlib import import_module
+from types import ModuleType
+from typing import Any, override
 
 from build123d import export_step, export_stl
 
-from prints import Result, create_param_parser
+from .params import Result, ParamsBase
+from .utils import check_module
+
+
+class PrefixedAction(Action):
+    def __init__(self, *args, prefixes: list[str] | None, **kwargs):
+        self._prefixes = prefixes or []
+        super().__init__(*args, **kwargs)
+
+    @override
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        for prefix in self._prefixes:
+            namespace = getattr(namespace, prefix)
+
+        if option_string in self.option_strings:
+            setattr(namespace, self.dest, values)
+
+
+class PrefixedBooleanAction(BooleanOptionalAction):
+    def __init__(self, *args, prefixes: list[str] | None, **kwargs):
+        self._prefixes = prefixes or []
+        super().__init__(*args, **kwargs)
+
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        for prefix in self._prefixes:
+            namespace = getattr(namespace, prefix)
+
+        return super().__call__(parser, namespace, values, option_string)
+
+
+def _join_prefix(dest: str, prefixes: list[str] | None = None) -> str:
+    if not prefixes:
+        return dest
+
+    return f"{'_'.join(prefixes)}_{dest}"
+
+
+def _add_param_parser_args(
+    param_parser: ArgumentParser,
+    cls: type[ParamsBase],
+    *,
+    prefixes: list[str] | None = None,
+) -> None:
+    for k, v in cls.annotations().items():
+        if issubclass(v, ParamsBase):
+            if not prefixes:
+                prefixes = []
+            _add_param_parser_args(param_parser, v, prefixes=[*prefixes, k])
+            continue
+
+        kwargs = {
+            "dest": k,
+            "type": v,
+            "default": getattr(cls, k),
+            "prefixes": prefixes,
+            "action": PrefixedAction,
+        }
+
+        if v is bool:
+            del kwargs["type"]
+            kwargs["action"] = PrefixedBooleanAction
+
+        param_parser.add_argument(f"--{_join_prefix(k, prefixes)}", **kwargs)
+
+
+def create_param_parser(
+    cls: type[ParamsBase], *, description: str | None
+) -> ArgumentParser:
+    param_parser = ArgumentParser(description=description)
+    _add_param_parser_args(param_parser, cls)
+    return param_parser
 
 
 def _split_args(args: list[str]) -> tuple[list[str], list[str]]:
@@ -34,7 +123,7 @@ def _flatten_params(params: list[str]) -> list[str]:
     return ret
 
 
-def _serialize_params(params: list[str]) -> str:
+def serialize_params(params: list[str]) -> str:
     parsed: dict[str, list[str]] = {}
     last_param_name = ""
 
@@ -56,6 +145,18 @@ def _serialize_params(params: list[str]) -> str:
             parts.append(k)
 
     return "&".join(parts)
+
+
+def validate_mod_name(mod_name: str) -> None:
+    if " " in mod_name:
+        raise ValueError("invalid module name; may not contain spaces")
+    names = mod_name.split(".")
+    if any([n.startswith("_") for n in names]):
+        raise ValueError("invalid module name; may not import private modules")
+    if "" in names:
+        raise ValueError("invalid module name; invalid import")
+    if any([not n.isidentifier() for n in names]):
+        raise ValueError("invalid module name; invalid import")
 
 
 def export(
@@ -134,8 +235,6 @@ def view(
 
 
 def main():
-    from prints import check_module
-
     raw_args, raw_params = _split_args(sys.argv[1:])
 
     parser = ArgumentParser(description="Build a print module definition.")
@@ -185,9 +284,8 @@ def main():
     args = parser.parse_args(args=raw_args)
 
     mod_name = args.module[0]
-    if mod_name.startswith("_"):
-        raise ValueError("module name may not start with '_'")
-    mod = import_module("prints.models.{}".format(mod_name))
+    validate_mod_name(mod_name)
+    mod = import_module(f".models.{mod_name}", "prints")
     check_module(mod)
 
     param_parser = create_param_parser(mod.Params, description=mod.__doc__)
@@ -195,8 +293,8 @@ def main():
     param_parser.parse_args(raw_params, namespace=params)
 
     fname_suffix = ""
-    if s := _serialize_params(raw_params):
-        fname_suffix = f";{s}"
+    if s := serialize_params(raw_params):
+        fname_suffix = f"-{s}"
     args.func(
         mod_name,
         mod,
