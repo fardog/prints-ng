@@ -13,9 +13,9 @@ from importlib import import_module
 from types import ModuleType
 from typing import Any, override
 
-from build123d import export_step, export_stl
+from build123d import Mesher, Shape, export_step, export_stl
 
-from .params import Result, ParamsBase
+from .params import ParamsBase, Result
 from .utils import check_module
 
 
@@ -175,7 +175,20 @@ def export(
 
     export_fn = None
     ext = None
-    if args.type == "step":
+    if args.type == "3mf":
+        # TODO: support params as metadata
+        def export_3mf(
+            to_export: Shape,
+            file_path: os.PathLike | str | bytes,
+        ) -> bool:
+            mesher = Mesher()
+            mesher.add_shape(to_export)
+            mesher.write(file_path)
+            return True
+
+        export_fn = export_3mf
+        ext = ".3mf"
+    elif args.type == "step":
         export_fn = export_step
         ext = ".step"
     elif args.type == "stl":
@@ -272,8 +285,8 @@ def main():
     export_parser.add_argument(
         "-t",
         "--type",
-        default="step",
-        choices=("step", "stl"),
+        default="3mf",
+        choices=("3mf", "step", "stl"),
         help="export models as the given type; note this also etermines the output file extension",
     )
     export_parser.set_defaults(func=export)
