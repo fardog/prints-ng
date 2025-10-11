@@ -57,29 +57,21 @@ def main(params: Params) -> Result:
         extrude(amount=-params.thickness, mode=Mode.SUBTRACT)
 
         # left tab
-        points = (
-            (0, 0),
-            (params.tab_width, params.tab_width),
-            (params.tab_width, 0),
-            (0, 0),
-        )
         with BuildSketch() as left_tab_sk:
             with Locations((0, params.height / 2 + params.tab_height / 2)):
                 Rectangle(
                     params.tab_width, params.tab_height, align=(Align.MAX, Align.CENTER)
                 )
         extrude(amount=params.tab_thickness)
-        front_face = part.faces(Select.LAST).filter_by(Axis.Y).sort_by(Axis.Y)[0]
-        with BuildSketch(Plane(front_face)) as support_sk:
-            with BuildLine(Location((-params.tab_width / 2, params.tab_thickness / 2))):
-                Polyline(points)
-            make_face()
+        frontf = part.faces(Select.LAST).filter_by(Axis.Y).sort_by(Axis.Y)[0]
+        frontf_vertex = frontf.vertices().sort_by(Axis.Z)[2:].sort_by(Axis.X)[0]
+        with BuildSketch(Plane(frontf).shift_origin(frontf_vertex)) as support_sk:
+            Triangle(a=params.tab_width, b=params.tab_width, C=90, align=Align.MIN)
         extrude(amount=-params.tab_thickness)
-
-        with BuildSketch(Plane(front_face).offset(-params.tab_height)) as support_sk:
-            with BuildLine(Location((-params.tab_width / 2, params.tab_thickness / 2))):
-                Polyline(points)
-            make_face()
+        with BuildSketch(
+            Plane(frontf).shift_origin(frontf_vertex).offset(-params.tab_height)
+        ) as support_sk:
+            Triangle(a=params.tab_width, b=params.tab_width, C=90, align=Align.MIN)
         extrude(amount=params.tab_thickness)
 
         topf = part.faces(Select.LAST).filter_by(Axis.Z).sort_by(Axis.Z)[-1]
@@ -88,12 +80,6 @@ def main(params: Params) -> Result:
         extrude(amount=-params.tab_thickness, mode=Mode.SUBTRACT)
 
         # right tab
-        points = (
-            (0, 0),
-            (0, params.tab_width),
-            (params.tab_width, 0),
-            (0, 0),
-        )
         with BuildSketch() as right_tab_sk:
             with Locations((params.width, params.height / 2)):
                 Rectangle(
@@ -101,17 +87,16 @@ def main(params: Params) -> Result:
                 )
         extrude(amount=params.tab_thickness)
 
-        front_face = part.faces(Select.LAST).filter_by(Axis.Y).sort_by(Axis.Y)[0]
-        with BuildSketch(Plane(front_face)) as support_sk:
-            with BuildLine(Location((-params.tab_width / 2, params.tab_thickness / 2))):
-                Polyline(points)
-            make_face()
+        frontf = part.faces(Select.LAST).filter_by(Axis.Y).sort_by(Axis.Y)[0]
+        frontf_vertex = frontf.vertices().sort_by(Axis.Z)[2:].sort_by(Axis.X)[0]
+        with BuildSketch(Plane(frontf).shift_origin(frontf_vertex)) as support_sk:
+            Triangle(a=params.tab_width, c=params.tab_width, B=90, align=Align.MIN)
         extrude(amount=-params.tab_thickness)
 
-        with BuildSketch(Plane(front_face).offset(-params.tab_height)) as support_sk:
-            with BuildLine(Location((-params.tab_width / 2, params.tab_thickness / 2))):
-                Polyline(points)
-            make_face()
+        with BuildSketch(
+            Plane(frontf).shift_origin(frontf_vertex).offset(-params.tab_height)
+        ) as support_sk:
+            Triangle(a=params.tab_width, c=params.tab_width, B=90, align=Align.MIN)
         extrude(amount=params.tab_thickness)
 
         topf = part.faces(Select.LAST).filter_by(Axis.Z).sort_by(Axis.Z)[-1]
