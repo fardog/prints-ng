@@ -17,6 +17,7 @@ class Params(ParamsBase):
     corner_r: float = 10
     hole_r: float = 4
     screw_d: float = 4
+    switch: bool = True
     switch_r: float = 12.5 / 2
 
 
@@ -118,12 +119,13 @@ def main(params: Params) -> Result:
             Rectangle(params.screw_d, params.tab_height - params.tab_thickness * 2)
         extrude(amount=-params.tab_thickness, mode=Mode.SUBTRACT)
 
-        leftf = part.faces().filter_by(Axis.X).sort_by(Axis.X)[-4]
-        assert leftf.width
-        with BuildSketch(Plane(leftf)):
-            with Locations((leftf.width / 4, 0)):
-                Circle(radius=params.switch_r)
-        extrude(amount=-params.thickness, mode=Mode.SUBTRACT)
+        if params.switch:
+            leftf = part.faces().filter_by(Axis.X).sort_by(Axis.X)[-4]
+            assert leftf.width
+            with BuildSketch(Plane(leftf)):
+                with Locations((leftf.width / 4, 0)):
+                    Circle(radius=params.switch_r)
+            extrude(amount=-params.thickness, mode=Mode.SUBTRACT)
 
     assert part.part
     return Result(name="housing", part=part.part, locals=locals())
