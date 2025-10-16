@@ -173,6 +173,9 @@ def export(
         dir = os.path.dirname(fname)
         os.makedirs(dir, exist_ok=True)
 
+    if os.path.isdir(fname):
+        fname = os.path.join(fname, mod_name)
+
     export_fn = None
     ext = None
     if args.type == "3mf":
