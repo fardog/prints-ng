@@ -39,3 +39,4 @@ ignore = ["F403", "F405"]
 
 [tool.pyright]
 reportWildcardImportFromLibrary = false
+reportUnusedCallResult = false

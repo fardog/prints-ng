@@ -4,9 +4,9 @@ from prints.params import ParamsBase, Result
 
 
 class Params(ParamsBase):
-    sphere_r = (2.25 / 2) * IN
-    thickness = 2
-    chamfer = 4
+    sphere_r: float = (2.25 / 2) * IN
+    thickness: float = 2
+    chamfer: float = 4
 
 
 def main(params: Params) -> Result:
