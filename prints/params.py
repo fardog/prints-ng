@@ -1,6 +1,6 @@
 from collections import ChainMap
 from dataclasses import dataclass
-from typing import Any, get_type_hints
+from typing import Any, get_type_hints, override
 
 from build123d import Part
 
@@ -14,8 +14,11 @@ class Result:
 
 class ParamsBase:
     @classmethod
-    def annotations(cls) -> ChainMap:
+    def _annotations(cls) -> ChainMap:
         return ChainMap(*(get_type_hints(c) for c in cls.__mro__))
+
+    def _dict(self) -> dict[str, Any]:
+        return {key: getattr(self, key) for key in self._annotations().keys()}
 
 
 @dataclass(frozen=True)
