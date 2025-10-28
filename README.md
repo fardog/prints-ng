@@ -13,9 +13,8 @@ parameters, on rails. This project is meant to replace my very similar project,
 
 ## Generating Models
 
-Models are generated in either STEP or STL format, determined from the file
-extension you pass to `--out`. The `model_name` refers to a module in the
-`prints/models` directory.
+Models are generated in 3MF, STEP, or STL format, using 3MF by default. The
+`model_name` refers to a module in the `prints/models` directory.
 
 It's expected to run the project with [uv][] for now.
 
