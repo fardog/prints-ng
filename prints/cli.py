@@ -16,7 +16,7 @@ from typing import Any, override
 from build123d import Mesher, Shape, export_step, export_stl
 
 from .params import ParamsBase, Result
-from .utils import check_module
+from .utils import check_module, flatten_params
 
 
 class PrefixedAction(Action):
@@ -164,7 +164,7 @@ def export(
     mod: ModuleType,
     *,
     args: Namespace,
-    params: Namespace,
+    params: ParamsBase,
     fname_suffix: str = "",
 ) -> None:
     fname = args.out
@@ -179,13 +179,21 @@ def export(
     export_fn = None
     ext = None
     if args.type == "3mf":
-        # TODO: support params as metadata
+
         def export_3mf(
             to_export: Shape,
             file_path: os.PathLike | str | bytes,
         ) -> bool:
             mesher = Mesher()
             mesher.add_shape(to_export)
+            for k, v in flatten_params(params).items():
+                mesher.add_meta_data(
+                    name_space="custom",
+                    name=k,
+                    value=str(v),
+                    metadata_type="str",
+                    must_preserve=False,
+                )
             mesher.write(file_path)
             return True
 
@@ -232,7 +240,7 @@ def view(
     mod: ModuleType,
     *,
     args: Namespace,
-    params: Namespace,
+    params: ParamsBase,
     fname_suffix=None,  # not used by view method, but included for parity with export
 ) -> None:
     from ocp_vscode import show
