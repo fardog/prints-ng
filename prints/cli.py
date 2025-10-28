@@ -70,7 +70,7 @@ def _add_param_parser_args(
     *,
     prefixes: list[str] | None = None,
 ) -> None:
-    for k, v in cls.annotations().items():
+    for k, v in cls._annotations().items():
         if issubclass(v, ParamsBase):
             if not prefixes:
                 prefixes = []

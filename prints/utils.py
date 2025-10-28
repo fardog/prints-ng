@@ -1,6 +1,8 @@
 from collections.abc import Mapping
+from dataclasses import fields
 from inspect import Parameter, signature
 from types import ModuleType
+from typing import Any, TypeGuard
 
 from .params import ParamsBase
 
@@ -53,3 +55,33 @@ def check_module(mod: ModuleType) -> None:
         raise TypeError(
             f"module may not contain kwargs without defaults; found {', '.join(kwargs_without_default)}"
         )
+
+
+Primitive = int | float | bool | str
+primitives = (int, float, bool, str)
+
+
+def is_primitive(var: object) -> TypeGuard[Primitive]:
+    return type(var) in primitives
+
+
+def _flatten_params(
+    params: ParamsBase, accumulator: dict[str, Primitive], path: list[str]
+) -> None:
+    for k, v in params._dict().items():
+        parts = [*path, k]
+        if is_primitive(v):
+            key = ".".join(parts)
+            accumulator[key] = v
+        elif isinstance(v, ParamsBase):
+            _flatten_params(v, accumulator, parts)
+        else:
+            raise ValueError(
+                f"field ``{k}`` has value that is not a primitive, nor an instance of ``ParamsBase``"
+            )
+
+
+def flatten_params(params: ParamsBase) -> dict[str, Primitive]:
+    accumulator = {}
+    _flatten_params(params, accumulator, [])
+    return accumulator

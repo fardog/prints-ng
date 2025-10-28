@@ -1,6 +1,6 @@
 import pytest
 from unittest import TestCase
-from prints.utils import check_module
+from prints.utils import check_module, flatten_params
 from prints.params import ParamsBase, Result
 
 
@@ -175,3 +175,36 @@ class TestCheckModule(TestCase):
         setattr(mod, "Params", Params)
 
         assert check_module(mod) is None
+
+
+class TestFlattenParams(TestCase):
+    def test_flatten_simple(self):
+        class Params(ParamsBase):
+            a: str = "wut"
+            b: int = 1
+            c: float = 2.0
+
+        expected = {
+            "a": "wut",
+            "b": 1,
+            "c": 2.0,
+        }
+
+        assert flatten_params(Params()) == expected
+
+    def test_flatten_nested(self):
+        class SubParams(ParamsBase):
+            d: str = "hmm"
+
+        class Params(ParamsBase):
+            a: str = "wut"
+            b: int = 1
+            c: float = 2.0
+            sub: SubParams = SubParams()
+
+        expected = {
+            "a": "wut",
+            "b": 1,
+            "c": 2.0,
+            "sub.d": "hmm",
+        }
