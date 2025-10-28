@@ -16,7 +16,7 @@ dependencies = [
 dev = [
     "ocp-vscode~=2.9.0",
     "pytest~=8.4.2",
-    "ruff~=0.13.0",
+    "ruff~=0.14.1",
 ]
 
 [project.scripts]
@@ -38,5 +38,6 @@ bd-warehouse = { git = "https://github.com/gumyr/bd_warehouse", rev = "97112a02d
 ignore = ["F403", "F405"]
 
 [tool.pyright]
+typeCheckingMode = "standard"
 reportWildcardImportFromLibrary = false
 reportUnusedCallResult = false
