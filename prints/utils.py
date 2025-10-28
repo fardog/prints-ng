@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from inspect import Parameter, signature
-from typing import Mapping
+from types import ModuleType
 
 from .params import ParamsBase
 
@@ -23,7 +24,7 @@ def _getargspec(
     return (args, kwargs, has_default)
 
 
-def check_module(mod) -> None:
+def check_module(mod: ModuleType) -> None:
     if not hasattr(mod, "Params"):
         raise TypeError("module does not export `Params`")
     if not hasattr(mod, "main"):
