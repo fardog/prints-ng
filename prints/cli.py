@@ -259,7 +259,7 @@ def main():
 
     export_parser = subparsers.add_parser("export")
     export_parser.add_argument(
-        "-o", "--out", type=str, help="destination file", required=True
+        "-o", "--out", type=str, help="destination file or folder", required=True
     )
     export_parser.add_argument(
         "-f",
@@ -290,7 +290,7 @@ def main():
         "--type",
         default="3mf",
         choices=("3mf", "step", "stl"),
-        help="export models as the given type; note this also etermines the output file extension",
+        help="export models as the given type; note this also determines the output file extension",
     )
     export_parser.set_defaults(func=export)
 
