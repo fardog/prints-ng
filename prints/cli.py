@@ -13,7 +13,7 @@ from importlib import import_module
 from types import ModuleType
 from typing import Any, override
 
-from build123d import Mesher, Shape, export_step, export_stl
+from build123d import Mesher, Shape, export_step, export_stl, pack
 
 from .params import ParamsBase, Result
 from .utils import check_module, flatten_params
@@ -253,7 +253,7 @@ def view(
         raise ValueError("invalid generation: not instance of ``Result``")
 
     show(
-        *[r.locals for r in res],
+        *[r.locals if r.locals else r.part for r in res],
         names=[r.name if r.name else idx for idx, r in enumerate(res)],
     )
 
